@@ -1,21 +1,40 @@
-import React from "react";
+import React, { useState } from "react";
 
 function Login() {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    async function login() {
+        let item = { email, password };
+        let result = await fetch("http://localhost:8000/api/login", {
+            method: "POST",
+            body: JSON.stringify(item),
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        });
+
+        result = await result.json();
+        console.log(result);
+    }
+
     return (
         <div className="flex justify-center items-center min-h-screen bg-gray-100">
             <div className="bg-white p-6 rounded shadow-md w-full max-w-sm">
                 <div className="mb-4">
                     <label
-                        htmlFor="username"
+                        htmlFor="email"
                         className="block text-gray-700 font-bold mb-2"
                     >
-                        Username:
+                        Email:
                     </label>
                     <input
                         type="text"
-                        id="username"
-                        name="username"
+                        id="email"
+                        name="email"
                         required
+                        onChange={(e) => setEmail(e.target.value)}
                         className="w-full px-3 py-2 border rounded"
                     />
                 </div>
@@ -31,10 +50,14 @@ function Login() {
                         id="password"
                         name="password"
                         required
+                        onChange={(e) => setPassword(e.target.value)}
                         className="w-full px-3 py-2 border rounded"
                     />
                 </div>
-                <button className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-500">
+                <button
+                    onClick={login}
+                    className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-500"
+                >
                     Login
                 </button>
             </div>
