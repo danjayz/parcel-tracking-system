@@ -2,63 +2,128 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Parcel;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
 class ParcelController extends Controller
 {
-    // public function addParcel(Request $req) {
-    //     $parcel = new Parcel;
-    //     $parcel->tracking_number = $req->trackingNumber;
-    //     $parcel->address_line1 = $req->addressLine1;
-    //     $parcel->city = $req->city;
-    //     $parcel->district = $req->district;
-    //     $parcel->weight = $req->weight;
-    //     $parcel->dimensions = $req->dimensions;
-    //     $parcel->description = $req->description;
-    //     $parcel->comments = $req->comments; // Can be null
-    //     $parcel->save();
-
-    //     return response()->json([
-    //         'status' => 200,
-    //         'parcel' => $parcel,
-    //         'message' => 'Parcel created successfully'
-    //     ]);
-    // }
-
-    public function getParcels() {
+    /**
+     * Display a listing of the parcels.
+     */
+    public function getParcels()
+    {
         $parcels = Parcel::all();
-        return response()->json([
-            'status' => 200,
-            'parcels' => $parcels
+
+        return response([
+            'data' => [
+                'parcels' => $parcels],
+            'msg' => 'Parcels received successfully'
         ]);
     }
 
-    public function getParcel($id) {
-        $parcel = Parcel::where('tracking_number', $trackingNumber)->first();
-        return response()->json([
-            'status' => 200,
-            'parcel' => $parcel
+    /**
+     * Store a newly created parcel in storage.
+     */
+    public function addParcel(Request $req)
+    {
+        $data = $req->validate([
+            'tracking_number' => 'required|max:255',
+            'sender_name' => 'required|max:255',
+            'receiver_name' => 'required|max:255',
+            'address_line1' => 'required|max:255',
+            'city' => 'required|max:255',
+            'district' => 'required|max:255',
+            'weight' => 'required|numeric',
+            'dimensions' => 'required|max:255',
+            'pickup_location' => 'required|max:255',
+            'description' => 'nullable|string',
+            'comments' => 'nullable|string',
         ]);
+
+        $parcel = Parcel::create($data);
+
+        return response([
+            'data' => [
+                'parcel' => $parcel
+            ],
+            'msg' => 'Parcel created successfully'
+        ], 201);
+        
     }
 
-    // public function addParcel(Request $req) {
-    //     $parcel = new Parcel;
-    //     $parcel->tracking_number = $req->tracking_number;
+    /**
+     * Display the specified parcel.
+     */
+    public function getParcel($id)
+    {
+        $parcel = Parcel::where('tracking_number', $id)->first();
+    
+        if (!$parcel) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Parcel not found'
+            ], 404);
+        }
+        return response([
+            'data' => [
+                'parcel' => $parcel],
+            'msg' => 'Parcel received successfully'
+        ], 200);
+    }
 
-    //     $parcel->address_line1 = $req->address_line1;
-    //     $parcel->city = $req->city;
-    //     $parcel->district = $req->district;
-    //     $parcel->weight = $req->weight;
-    //     $parcel->dimensions = $req->dimensions;
-    //     $parcel->description = $req->description;
-    //     $parcel->comments = $req->comments; // Can be null
-    //     $parcel->save();
+    /**
+     * Remove the specified parcel from storage.
+     */
+    public function deleteParcel($id)
+    {
+        $parcel = Parcel::find($id);
+    
+        if (!$parcel) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Parcel not found'
+            ], 404);
+        }
+    
+        $parcel->delete();
 
-    //     return response()->json([
-    //         'status' => 200,
-    //         'parcel' => $parcel,
-    //         'message' => 'Parcel created successfully'
-    //     ]);
-    // }
+        return response([
+            'msg' => 'Parcel deleted successfully'
+        ], 200);
+    }
+
+    /**
+     * Update the specified parcel in storage.
+     */
+    public function updateParcel(Request $req, $id)
+    {
+        $parcel = Parcel::find($id);
+    
+        if (!$parcel) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Parcel not found'
+            ], 404);
+        }
+
+        $data = $req->validate([
+            'state' => 'required|max:255',
+        ]);
+
+        $parcel->state = $data['state'];
+        $parcel->save();
+    
+        // return response()->json([
+        //     'status' => 200,
+        //     'parcel' => $parcel,
+        //     'message' => 'Parcel updated successfully'
+        // ]);
+
+        return response([
+            'data' => [
+                'parcel' => $parcel],
+            'msg' => 'Parcel updated successfully'
+        ], 200);
+    }
 }
