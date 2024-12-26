@@ -1,107 +1,3 @@
-// import axios from "axios";
-// import React, { useState } from "react";
-// import { useNavigate } from "react-router-dom";
-
-// function Login() {
-//     const navigate = useNavigate();
-//     const [logInput, setLogInput] = useState({
-//         email: "",
-//         password: "",
-//         error_list: [],
-//     });
-
-//     const handleInput = (e) => {
-//         e.persist();
-//         setLogInput({ ...logInput, [e.target.name]: e.target.value });
-//     };
-
-//     const loginSubmit = (e) => {
-//         e.preventDefault();
-
-//         const data = {
-//             email: logInput.email,
-//             password: logInput.password,
-//         };
-
-//         axios.get("/sanctum/csrf-cookie").then((response) => {
-//             axios
-//                 .post("http://localhost:8000/api/login", data)
-//                 .then((response) => {
-//                     if (response.data.status === 200) {
-//                         localStorage.setItem("auth_token", response.data.token);
-//                         localStorage.setItem("user_name", response.data.name);
-//                         swal({
-//                             title: "Success",
-//                             text: response.data.message,
-//                             icon: "success",
-//                             buttons: false,
-//                             timer: 2000,
-//                         }).then(() => {
-//                             navigate("/home", { replace: true });
-//                             window.location.reload();
-//                         });
-//                     } else if (response.data.status === 401) {
-//                         swal("Error", response.data.message, "error");
-//                     } else {
-//                         setLogInput({
-//                             ...logInput,
-//                             error_list: response.data.validation_error,
-//                         });
-//                     }
-//                 });
-//         });
-//     };
-
-//     return (
-//         <div className="flex justify-center items-center min-h-screen bg-gray-100">
-//             <div className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-//                 <div className="mb-4">
-//                     <label
-//                         htmlFor="email"
-//                         className="block text-gray-700 font-bold mb-2"
-//                     >
-//                         Email:
-//                     </label>
-//                     <input
-//                         type="text"
-//                         id="email"
-//                         name="email"
-//                         required
-//                         onChange={handleInput}
-//                         value={logInput.email}
-//                         className="w-full px-3 py-2 border rounded"
-//                     />
-//                 </div>
-//                 <div className="mb-4">
-//                     <label
-//                         htmlFor="password"
-//                         className="block text-gray-700 font-bold mb-2"
-//                     >
-//                         Password:
-//                     </label>
-//                     <input
-//                         type="password"
-//                         id="password"
-//                         name="password"
-//                         required
-//                         onChange={handleInput}
-//                         value={logInput.password}
-//                         className="w-full px-3 py-2 border rounded"
-//                     />
-//                 </div>
-//                 <button
-//                     onClick={loginSubmit}
-//                     className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-500"
-//                 >
-//                     Login
-//                 </button>
-//             </div>
-//         </div>
-//     );
-// }
-
-// export default Login;
-
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -135,7 +31,10 @@ function Login() {
                     if (response.data.status === 200) {
                         console.log(response.data);
                         localStorage.setItem("auth_token", response.data.token);
-                        localStorage.setItem("user_name", response.data.name);
+                        localStorage.setItem(
+                            "user_type",
+                            response.data.user_type
+                        );
                         swal({
                             title: "Success",
                             text: response.data.message,

@@ -5,9 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Parcel;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use App\Events\MyEvent;
+use Illuminate\Support\Facades\Event;
+use App\Events\ParcelStatusChanged;
+
 
 class ParcelController extends Controller
 {
+
+
     /**
      * Display a listing of the parcels.
      */
@@ -58,6 +65,7 @@ class ParcelController extends Controller
     public function getParcel($id)
     {
         $parcel = Parcel::where('tracking_number', $id)->first();
+
     
         if (!$parcel) {
             return response()->json([
@@ -68,7 +76,7 @@ class ParcelController extends Controller
         return response([
             'data' => [
                 'parcel' => $parcel],
-            'msg' => 'Parcel received successfully'
+            'msg' => 'Parcel received successfully',
         ], 200);
     }
 
@@ -93,6 +101,7 @@ class ParcelController extends Controller
         ], 200);
     }
 
+
     /**
      * Update the specified parcel in storage.
      */
@@ -113,12 +122,9 @@ class ParcelController extends Controller
 
         $parcel->state = $data['state'];
         $parcel->save();
-    
-        // return response()->json([
-        //     'status' => 200,
-        //     'parcel' => $parcel,
-        //     'message' => 'Parcel updated successfully'
-        // ]);
+
+        // Broadcast the parcel status change event to users who have the parcel
+        event(new ParcelStatusChanged($parcel));
 
         return response([
             'data' => [
@@ -126,4 +132,15 @@ class ParcelController extends Controller
             'msg' => 'Parcel updated successfully'
         ], 200);
     }
+
+    public function updatePackageStatus($packageId, $status)
+{
+    // Update the package status in the database
+    $package = Package::find($packageId);
+    $package->status = $status;
+    $package->save();
+
+    // Broadcast the event
+    event(new PackageStatusChanged($packageId, $status));
+}
 }

@@ -18,4 +18,9 @@ class Parcel extends Model {
         'description',
         'comments'
     ];
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'user_parcel');
+    }
 }

@@ -1,71 +1,119 @@
-import React, { useState } from "react";
-import { Package, X, Trash2, Plus } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Package, X, Trash2, Plus, Eye } from "lucide-react";
+import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const MyPackages = () => {
-    const [packages, setPackages] = useState([
-        {
-            id: 1,
-            tracking_number: "TRK123456789",
-            carrier: "FedEx",
-            state: "Out for Delivery",
-            created_at: "2024-12-01T10:00:00Z",
-        },
-        {
-            id: 2,
-            tracking_number: "TRK987654321",
-            carrier: "UPS",
-            state: "In Transit",
-            created_at: "2024-12-02T14:30:00Z",
-        },
-    ]);
-
+    const [packages, setPackages] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [isAddingPackage, setIsAddingPackage] = useState(false);
-    const [newPackage, setNewPackage] = useState({
-        tracking_number: "",
-        carrier: "FedEx",
-    });
+    const [trackingId, setTrackingId] = useState("");
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        fetchPackages();
+    }, []);
+
+    const fetchPackages = () => {
+        axios
+            .get(`http://localhost:8000/api/userParcels`)
+            .then((res) => {
+                if (res.status === 200) {
+                    setPackages(res.data.parcels);
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                toast.error("Failed to load packages");
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    };
 
     const getStatusColor = (status) => {
         const statusColors = {
-            Delivered: "bg-green-100 text-green-800",
-            "In Transit": "bg-blue-100 text-blue-800",
-            Pending: "bg-yellow-100 text-yellow-800",
+            Delivered: "bg-emerald-100 text-emerald-800",
+            "In Transit": "bg-sky-100 text-sky-800",
+            Pending: "bg-amber-100 text-amber-800",
+            Returned: "bg-rose-100 text-rose-800",
+            Exception: "bg-purple-100 text-purple-800",
             "Out for Delivery": "bg-indigo-100 text-indigo-800",
-            Exception: "bg-red-100 text-red-800",
         };
-        return statusColors[status] || "bg-gray-100 text-gray-800";
+        return statusColors[status] || "bg-slate-100 text-slate-800";
     };
 
-    const handleDeletePackage = (packageId) => {
-        setPackages((prevPackages) =>
-            prevPackages.filter((pkg) => pkg.id !== packageId)
-        );
-    };
-
-    const handleAddPackage = () => {
-        if (newPackage.tracking_number && newPackage.carrier) {
-            setPackages((prevPackages) => [
-                ...prevPackages,
-                {
-                    ...newPackage,
-                    id: Date.now(),
-                    state: "Pending",
-                    created_at: new Date().toISOString(),
-                },
-            ]);
-            setIsAddingPackage(false);
-            setNewPackage({
-                tracking_number: "",
-                carrier: "FedEx",
-            });
+    const handleDeletePackage = async (packageId) => {
+        try {
+            await axios.delete(
+                `http://localhost:8000/api/userParcel/${packageId}`
+            );
+            fetchPackages();
+            toast.success("Package removed successfully");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to remove package");
         }
     };
 
+    const handleView = (parcelId) => {
+        navigate(`/parcels/${parcelId}`);
+    };
+
+    const handleAddPackage = async () => {
+        try {
+            const parcelRes = await axios.get(
+                `http://localhost:8000/api/parcels/${trackingId}`
+            );
+
+            if (parcelRes.status === 200) {
+                const parcelId = parcelRes.data.data.parcel.id;
+                const userRes = await axios.get(
+                    `http://localhost:8000/api/user_id`,
+                    {
+                        withCredentials: true,
+                    }
+                );
+                const userId = userRes.data.user_id;
+
+                await axios.post(`http://localhost:8000/api/addParcelToUser`, {
+                    user_id: userId,
+                    parcel_id: parcelId,
+                });
+
+                toast.success("Package added successfully");
+                setTrackingId("");
+                setIsAddingPackage(false);
+                fetchPackages();
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to add package");
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
+                <div className="text-center">
+                    <Package className="mx-auto h-16 w-16 text-blue-600 animate-pulse" />
+                    <p className="mt-4 text-xl font-semibold text-gray-700">
+                        Loading Packages...
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     const renderMobilePackageCard = (pkg) => (
-        <div key={pkg.id} className="bg-white shadow-md rounded-lg p-4 mb-4">
-            <div className="flex justify-between items-center mb-2">
+        <div
+            key={pkg.id}
+            className="bg-white shadow-lg rounded-xl p-6 mb-4 transform transition-all duration-300 hover:scale-102 hover:shadow-xl"
+        >
+            <div className="flex justify-between items-center mb-4">
                 <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium ${getStatusColor(
                         pkg.state
                     )}`}
                 >
@@ -73,27 +121,30 @@ const MyPackages = () => {
                 </span>
                 <div className="flex space-x-2">
                     <button
-                        onClick={() => handleDeletePackage(pkg.id)}
-                        className="text-red-600 hover:bg-red-100 p-1 rounded-full"
+                        onClick={() => handleView(pkg.tracking_number)}
+                        className="text-emerald-600 hover:bg-emerald-100 p-2 rounded-full transition-colors"
                     >
-                        <Trash2 className="h-4 w-4" />
+                        <Eye className="h-5 w-5" />
+                    </button>
+                    <button
+                        onClick={() => handleDeletePackage(pkg.id)}
+                        className="text-rose-600 hover:bg-rose-100 p-2 rounded-full transition-colors"
+                    >
+                        <Trash2 className="h-5 w-5" />
                     </button>
                 </div>
             </div>
-
-            <div className="space-y-2">
-                <div className="flex justify-between">
-                    <span className="font-medium text-gray-700">Carrier:</span>
-                    <span className="text-gray-900">{pkg.carrier}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="font-medium text-gray-700">
+            <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">
                         Tracking Number:
                     </span>
-                    <span className="text-gray-900">{pkg.tracking_number}</span>
+                    <span className="text-gray-900 font-semibold">
+                        {pkg.tracking_number}
+                    </span>
                 </div>
-                <div className="flex justify-between">
-                    <span className="font-medium text-gray-700">Added:</span>
+                <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">Added:</span>
                     <span className="text-gray-900">
                         {new Date(pkg.created_at).toLocaleDateString()}
                     </span>
@@ -102,163 +153,172 @@ const MyPackages = () => {
         </div>
     );
 
+    const EmptyState = () => (
+        <div className="flex flex-col items-center justify-center py-12">
+            <Package className="h-16 w-16 text-blue-400 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                No packages added
+            </h3>
+            <p className="text-gray-600 mb-6">
+                Click "Track Package" to add your first package
+            </p>
+            <button
+                onClick={() => setIsAddingPackage(true)}
+                className="bg-blue-600 text-white px-6 py-2.5 rounded-lg flex items-center shadow-lg hover:bg-blue-700 transition-all duration-300"
+            >
+                <Plus className="h-5 w-5 mr-2" /> Track Package
+            </button>
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-500 py-4 shadow-lg">
-                <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-white flex items-center">
-                        <Package className="mr-2 h-6 w-6" /> My Packages
-                    </h2>
-                    <button
-                        onClick={() => setIsAddingPackage(true)}
-                        className="bg-white text-blue-600 px-4 py-2 rounded-lg flex items-center shadow-md hover:bg-blue-50 transition-colors"
-                    >
-                        <Plus className="h-4 w-4 mr-2" /> Track Package
-                    </button>
-                </div>
-            </div>
-
-            {/* Desktop Table */}
-            <div className="max-w-7xl mx-auto">
-                <div className="hidden md:block px-4 py-8">
-                    <div className="bg-white shadow-xl rounded-xl overflow-hidden">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
-                                <tr>
-                                    <th className="px-6 py-4 text-left">
-                                        Added Date
-                                    </th>
-                                    <th className="px-6 py-4 text-left">
-                                        Carrier
-                                    </th>
-                                    <th className="px-6 py-4 text-left">
-                                        Tracking Number
-                                    </th>
-                                    <th className="px-6 py-4 text-left">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-4 text-left">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {packages.map((pkg, index) => (
-                                    <tr
-                                        key={pkg.id}
-                                        className={`${
-                                            index % 2 === 0
-                                                ? "bg-gray-50"
-                                                : "bg-white"
-                                        } hover:bg-blue-50 transition-colors`}
-                                    >
-                                        <td className="px-6 py-4">
-                                            {new Date(
-                                                pkg.created_at
-                                            ).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {pkg.carrier}
-                                        </td>
-                                        <td className="px-6 py-4 font-medium">
-                                            {pkg.tracking_number}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                                                    pkg.state
-                                                )}`}
-                                            >
-                                                {pkg.state}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() =>
-                                                    handleDeletePackage(pkg.id)
-                                                }
-                                                className="text-red-600 hover:bg-red-100 p-2 rounded-full transition-colors"
-                                            >
-                                                <Trash2 className="h-5 w-5" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 py-6 shadow-xl">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-3xl font-bold text-white flex items-center">
+                            <Package className="mr-3 h-8 w-8" /> My Packages
+                        </h2>
+                        <button
+                            onClick={() => setIsAddingPackage(true)}
+                            className="bg-white text-blue-600 px-6 py-2.5 rounded-lg flex items-center shadow-lg hover:bg-blue-50 transition-all duration-300 transform hover:scale-105"
+                        >
+                            <Plus className="h-5 w-5 mr-2" /> Track Package
+                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* Mobile View */}
-            <div className="md:hidden p-4">
-                {packages.map(renderMobilePackageCard)}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {packages.length === 0 ? (
+                    <EmptyState />
+                ) : (
+                    <>
+                        <div className="hidden md:block">
+                            <div className="bg-white shadow-xl rounded-xl overflow-hidden">
+                                <table className="w-full">
+                                    <thead className="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left font-semibold">
+                                                Added Date
+                                            </th>
+                                            <th className="px-6 py-4 text-left font-semibold">
+                                                Tracking Number
+                                            </th>
+                                            <th className="px-6 py-4 text-left font-semibold">
+                                                Status
+                                            </th>
+                                            <th className="px-6 py-4 text-left font-semibold">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {packages.map((pkg, index) => (
+                                            <tr
+                                                key={pkg.id}
+                                                className={`${
+                                                    index % 2 === 0
+                                                        ? "bg-gray-50"
+                                                        : "bg-white"
+                                                } hover:bg-blue-50 transition-colors`}
+                                            >
+                                                <td className="px-6 py-4 text-gray-900">
+                                                    {new Date(
+                                                        pkg.created_at
+                                                    ).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-6 py-4 font-medium text-gray-900">
+                                                    {pkg.tracking_number}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span
+                                                        className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                                                            pkg.state
+                                                        )}`}
+                                                    >
+                                                        {pkg.state}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleView(
+                                                                    pkg.tracking_number
+                                                                )
+                                                            }
+                                                            className="text-emerald-600 hover:bg-emerald-100 p-2 rounded-full transition-colors"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye className="h-5 w-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDeletePackage(
+                                                                    pkg.id
+                                                                )
+                                                            }
+                                                            className="text-rose-600 hover:bg-rose-100 p-2 rounded-full transition-colors"
+                                                            title="Remove Package"
+                                                        >
+                                                            <Trash2 className="h-5 w-5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="md:hidden space-y-4">
+                            {packages.map(renderMobilePackageCard)}
+                        </div>
+                    </>
+                )}
             </div>
 
-            {/* Add Package Modal */}
             {isAddingPackage && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold">
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl transform transition-all">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">
                                 Track a Package
                             </h3>
                             <button
                                 onClick={() => setIsAddingPackage(false)}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="text-gray-500 hover:text-gray-700 transition-colors"
                             >
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Carrier
-                                </label>
-                                <select
-                                    value={newPackage.carrier}
-                                    onChange={(e) =>
-                                        setNewPackage({
-                                            ...newPackage,
-                                            carrier: e.target.value,
-                                        })
-                                    }
-                                    className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500"
-                                >
-                                    <option>FedEx</option>
-                                    <option>UPS</option>
-                                    <option>USPS</option>
-                                    <option>DHL</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Tracking Number
                                 </label>
                                 <input
                                     type="text"
-                                    value={newPackage.tracking_number}
+                                    value={trackingId}
                                     onChange={(e) =>
-                                        setNewPackage({
-                                            ...newPackage,
-                                            tracking_number: e.target.value,
-                                        })
+                                        setTrackingId(e.target.value)
                                     }
                                     placeholder="Enter tracking number"
-                                    className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
                                 />
                             </div>
-                            <div className="flex justify-end space-x-3 mt-6">
+                            <div className="flex justify-end space-x-3">
                                 <button
                                     onClick={() => setIsAddingPackage(false)}
-                                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleAddPackage}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                 >
                                     Track Package
                                 </button>

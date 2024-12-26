@@ -7,6 +7,7 @@ import swal from "sweetalert";
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isAuthenticated = localStorage.getItem("auth_token");
+    const userType = localStorage.getItem("user_type"); // Get the user type
 
     const logoutSubmit = (e) => {
         e.preventDefault();
@@ -14,6 +15,7 @@ const Header = () => {
             if (response.data.status === 200) {
                 localStorage.removeItem("auth_token");
                 localStorage.removeItem("user_name");
+                localStorage.removeItem("user_type"); // Remove user type on logout
                 swal({
                     title: "Success",
                     text: response.data.message,
@@ -72,24 +74,28 @@ const Header = () => {
                                 >
                                     Home
                                 </Link>
-                                <Link
-                                    to="/parcels"
-                                    className="text-gray-700 hover:text-blue-600 transition-colors"
-                                >
-                                    Dashboard
-                                </Link>
+                                {userType === "admin" && (
+                                    <Link
+                                        to="/parcels"
+                                        className="text-gray-700 hover:text-blue-600 transition-colors"
+                                    >
+                                        Dashboard
+                                    </Link>
+                                )}
                                 <Link
                                     to="/packages"
                                     className="text-gray-700 hover:text-blue-600 transition-colors"
                                 >
-                                    Driver
+                                    My Packages
                                 </Link>
-                                <Link
-                                    to="/parcels/add"
-                                    className="text-gray-700 hover:text-blue-600 transition-colors"
-                                >
-                                    Add Parcel
-                                </Link>
+                                {userType === "admin" && (
+                                    <Link
+                                        to="/parcels/add"
+                                        className="text-gray-700 hover:text-blue-600 transition-colors"
+                                    >
+                                        Add Parcel
+                                    </Link>
+                                )}
                                 <button
                                     onClick={logoutSubmit}
                                     className="bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition-colors"
